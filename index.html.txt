@@ -1,0 +1,317 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Tác Nghiệp Khách Hàng</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f4f6f9; margin: 0; padding: 0; }
+    
+    /* Header & Menu Icon */
+    .header { background: #2c3e50; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .menu-btn { font-size: 24px; cursor: pointer; background: none; border: none; color: white; }
+    .header-title { font-size: 18px; font-weight: bold; }
+
+    /* Main Container */
+    .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+    .card { background: #fff; padding: 18px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 16px; }
+    h2 { color: #2c3e50; text-align: center; margin-top: 0; font-size: 20px; }
+    
+    /* Form elements */
+    .form-group { margin-bottom: 12px; }
+    label { font-weight: 600; display: block; margin-bottom: 4px; color: #34495e; font-size: 14px; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #dcdfe6; border-radius: 8px; font-size: 15px; background: #fafafa; }
+    textarea { resize: vertical; height: 70px; }
+    
+    /* Buttons */
+    .btn { background-color: #27ae60; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .btn:active { background-color: #219150; }
+    .btn-gps { background-color: #2980b9; margin-top: 6px; }
+    .btn-export { background-color: #8e44ad; margin-bottom: 12px; }
+    .btn-del { background: #ff4d4d; color: white; border: none; padding: 4px 8px; border-radius: 4px; float: right; cursor: pointer; font-size: 12px; }
+
+    /* Image Preview */
+    .img-preview { width: 100%; max-height: 150px; object-fit: cover; border-radius: 8px; margin-top: 8px; display: none; }
+    
+    /* Sidebar Navigation */
+    .sidebar { position: fixed; top: 0; left: -100%; width: 85%; max-width: 400px; height: 100%; background: #fff; z-index: 200; transition: 0.3s ease; overflow-y: auto; box-shadow: 2px 0 12px rgba(0,0,0,0.2); padding: 15px; }
+    .sidebar.active { left: 0; }
+    .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; display: none; }
+    .overlay.active { display: block; }
+    
+    /* Stats Box */
+    .stats-box { background: #e8f4f8; border-left: 4px solid #2980b9; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; color: #2c3e50; }
+    
+    /* Customer Card Item */
+    .customer-item { border-left: 4px solid #3498db; background: #f8f9fa; padding: 12px; margin-bottom: 12px; border-radius: 6px; position: relative; }
+    .tag-status { display: inline-block; background: #e74c3c; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin: 4px 0; font-weight: bold; }
+    .map-frame { width: 100%; height: 160px; border: 0; border-radius: 6px; margin-top: 8px; }
+    .house-img-list { width: 100%; max-height: 180px; object-fit: cover; border-radius: 6px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <button class="menu-btn" id="openSidebar">☰</button>
+    <div class="header-title">Tác Nghiệp Khách Hàng</div>
+    <div style="width: 24px;"></div>
+  </div>
+
+  <!-- SIDEBAR (DANH SÁCH & THỐNG KÊ) -->
+  <div class="overlay" id="overlay"></div>
+  <div class="sidebar" id="sidebar">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <h3 style="margin: 0;">Danh Sách Tác Nghiệp</h3>
+      <button class="menu-btn" id="closeSidebar" style="color: #333;">✕</button>
+    </div>
+
+    <!-- Tổng số khách hàng -->
+    <div class="stats-box" id="totalCount">📌 Tổng số KH đã tác nghiệp: 0</div>
+
+    <button type="button" class="btn btn-export" id="btnExport">📥 Xuất File Excel / CSV</button>
+    <div id="customerList"></div>
+  </div>
+
+  <!-- FORM NHẬP THÔNG TIN -->
+  <div class="container">
+    <div class="card">
+      <h2>Nhập Thông Tin Tác Nghiệp</h2>
+      <form id="workForm">
+        <div class="form-group">
+          <label for="custName">Tên khách hàng (*):</label>
+          <input type="text" id="custName" placeholder="Nhập tên khách hàng" required>
+        </div>
+
+        <div class="form-group">
+          <label for="custCccd">4 số cuối CCCD (*):</label>
+          <input type="text" id="custCccd" maxlength="4" pattern="\d{4}" placeholder="Ví dụ: 5678" required>
+        </div>
+
+        <div class="form-group">
+          <label for="custPhone">Số điện thoại (*):</label>
+          <input type="tel" id="custPhone" placeholder="Nhập số điện thoại" required>
+        </div>
+
+        <div class="form-group">
+          <label for="custAddress">Địa chỉ nhà:</label>
+          <input type="text" id="custAddress" placeholder="Nhập địa chỉ nhà">
+        </div>
+
+        <div class="form-group">
+          <label>Vị trí GPS hiện tại:</label>
+          <input type="hidden" id="geoCoords">
+          <button type="button" class="btn btn-gps" id="btnGps">📍 Lấy vị trí GPS</button>
+        </div>
+
+        <div class="form-group">
+          <label for="custStatus">Tình trạng tác nghiệp:</label>
+          <select id="custStatus">
+            <option value="Đã gặp - Đồng ý">Đã gặp - Đồng ý</option>
+            <option value="Đã gặp - Suy nghĩ thêm">Đã gặp - Suy nghĩ thêm</option>
+            <option value="Đã gặp - Từ chối">Đã gặp - Từ chối</option>
+            <option value="Không gặp được">Không gặp được</option>
+            <option value="Hẹn quay lại sau">Hẹn quay lại sau</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="custHouseImg">Ảnh nhà (Chụp hoặc chọn ảnh):</label>
+          <input type="file" id="custHouseImg" accept="image/*" capture="environment">
+          <img id="previewImg" class="img-preview" alt="Xem trước ảnh nhà">
+        </div>
+
+        <div class="form-group">
+          <label for="custNote">Ghi chú:</label>
+          <textarea id="custNote" placeholder="Nhập ghi chú chi tiết..."></textarea>
+        </div>
+
+        <button type="submit" class="btn">Lưu Thông Tin</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let base64Image = "";
+
+    // Toggle Sidebar
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    document.getElementById('openSidebar').addEventListener('click', () => {
+      sidebar.classList.add('active');
+      overlay.classList.add('active');
+    });
+    document.getElementById('closeSidebar').addEventListener('click', closeMenu);
+    overlay.addEventListener('click', closeMenu);
+
+    function closeMenu() {
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+    }
+
+    // Xử lý nén & Xem trước Ảnh Nhà
+    document.getElementById('custHouseImg').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const maxWidth = 600;
+            const scaleSize = maxWidth / img.width;
+            canvas.width = maxWidth;
+            canvas.height = img.height * scaleSize;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            base64Image = canvas.toDataURL('image/jpeg', 0.7);
+            const preview = document.getElementById('previewImg');
+            preview.src = base64Image;
+            preview.style.display = 'block';
+          }
+          img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Định vị GPS
+    document.getElementById('btnGps').addEventListener('click', function() {
+      if (!navigator.geolocation) {
+        alert("Trình duyệt không hỗ trợ GPS.");
+        return;
+      }
+      alert("Đang xác định vị trí GPS...");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          document.getElementById('geoCoords').value = `${lat},${lng}`;
+          alert(`Đã lấy vị trí: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        },
+        (err) => {
+          alert("Không thể lấy vị trí. Hãy đảm bảo bạn đã bật GPS và cho phép truy cập quyền vị trí.");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+
+    // Hiển thị danh sách & Tổng số KH
+    function renderCustomers() {
+      const listDiv = document.getElementById('customerList');
+      const list = JSON.parse(localStorage.getItem('my_customers_v2') || '[]');
+
+      document.getElementById('totalCount').innerText = `📌 Tổng số KH đã tác nghiệp: ${list.length}`;
+
+      if (list.length === 0) {
+        listDiv.innerHTML = '<p style="text-align: center; color: #777;">Chưa có dữ liệu tác nghiệp nào.</p>';
+        return;
+      }
+
+      listDiv.innerHTML = list.map((item, index) => {
+        let mapEmbed = '';
+        if (item.coords) {
+          mapEmbed = `<iframe class="map-frame" src="https://maps.google.com/maps?q=${item.coords}&z=15&output=embed"></iframe>`;
+        }
+
+        let imgTag = '';
+        if (item.image) {
+          imgTag = `<p><strong>Ảnh nhà:</strong></p><img src="${item.image}" class="house-img-list" alt="Ảnh nhà">`;
+        }
+
+        return `
+          <div class="customer-item">
+            <button class="btn-del" onclick="deleteCustomer(${index})">Xóa</button>
+            <strong>${index + 1}. ${item.name}</strong> (CCCD: ***${item.cccd})
+            <br><span>SĐT: ${item.phone}</span>
+            <br><span class="tag-status">${item.status}</span>
+            <p><strong>Địa chỉ nhà:</strong> ${item.address || 'Chưa nhập'}</p>
+            <p><strong>Ghi chú:</strong> ${item.note || 'Không có'}</p>
+            ${imgTag}
+            ${mapEmbed}
+            <p style="font-size: 11px; color: #888; margin-top: 6px;">⏱️ ${item.time}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Lưu thông tin
+    document.getElementById('workForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const newCustomer = {
+        name: document.getElementById('custName').value.trim(),
+        cccd: document.getElementById('custCccd').value.trim(),
+        phone: document.getElementById('custPhone').value.trim(),
+        address: document.getElementById('custAddress').value.trim(),
+        coords: document.getElementById('geoCoords').value,
+        status: document.getElementById('custStatus').value,
+        image: base64Image,
+        note: document.getElementById('custNote').value.trim(),
+        time: new Date().toLocaleString('vi-VN')
+      };
+
+      const currentList = JSON.parse(localStorage.getItem('my_customers_v2') || '[]');
+      currentList.unshift(newCustomer);
+      localStorage.setItem('my_customers_v2', JSON.stringify(currentList));
+
+      // Reset Form
+      this.reset();
+      base64Image = "";
+      document.getElementById('previewImg').style.display = 'none';
+      document.getElementById('geoCoords').value = '';
+
+      alert("Đã lưu thành công!");
+      renderCustomers();
+    });
+
+    // Xóa từng khách hàng
+    function deleteCustomer(index) {
+      if (confirm("Bạn có chắc muốn xóa khách hàng này?")) {
+        const currentList = JSON.parse(localStorage.getItem('my_customers_v2') || '[]');
+        currentList.splice(index, 1);
+        localStorage.setItem('my_customers_v2', JSON.stringify(currentList));
+        renderCustomers();
+      }
+    }
+
+    // Xuất Excel / CSV
+    document.getElementById('btnExport').addEventListener('click', function() {
+      const list = JSON.parse(localStorage.getItem('my_customers_v2') || '[]');
+      if (list.length === 0) {
+        alert("Chưa có dữ liệu để xuất file!");
+        return;
+      }
+
+      let csvContent = "\uFEFFTên KH,4 Số Cuối CCCD,Số Điện Thoại,Tình Trạng,Địa Chỉ Nhà,Tọa Độ GPS,Ghi Chú,Thời Gian\n";
+      list.forEach(item => {
+        const row = [
+          `"${item.name}"`,
+          `"${item.cccd}"`,
+          `"${item.phone}"`,
+          `"${item.status}"`,
+          `"${item.address}"`,
+          `"${item.coords}"`,
+          `"${item.note}"`,
+          `"${item.time}"`
+        ];
+        csvContent += row.join(",") + "\n";
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Tac_nghiep_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    window.onload = renderCustomers;
+  </script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Lý Tác Nghiệp Khách Hàng Nợ</title>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 30px; }
+
+    /* Header & Navigation */
+    header { background: var(--primary); color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .menu-btn { font-size: 24px; background: none; border: none; color: white; cursor: pointer; }
+    header h1 { font-size: 18px; font-weight: 600; }
+
+    /* Sidebar Drawer */
+    .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: var(--card-bg); box-shadow: 2px 0 10px rgba(0,0,0,0.2); transition: left 0.3s ease; z-index: 200; padding: 20px; }
+    .sidebar.open { left: 0; }
+    .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; }
+    .stats-card { background: #eff6ff; border-radius: 8px; padding: 15px; margin-bottom: 20px; text-align: center; }
+    .stats-card h3 { color: var(--primary); font-size: 28px; }
+
+    /* Layout & Form */
+    .container { max-width: 600px; margin: 15px auto; padding: 0 15px; }
+    .search-box { margin-bottom: 15px; }
+    .search-box input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; }
+
+    .card { background: var(--card-bg); border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .card h2 { font-size: 16px; margin-bottom: 15px; border-left: 4px solid var(--primary); padding-left: 8px; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; color: #475569; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+    .gps-container { display: flex; gap: 8px; }
+    .gps-btn { background: #0284c7; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-size: 13px; }
+    
+    .btn-submit { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+    
+    /* Customer List */
+    .customer-item { background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px; border: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; }
+    .customer-item img { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; background: #f1f5f9; }
+    .customer-info { flex: 1; }
+    .customer-info h4 { font-size: 15px; color: var(--text); }
+    .customer-info p { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 4px; }
+    .badge-paid { background: #dcfce7; color: #166534; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-unreachable { background: #fee2e2; color: #991b1b; }
+
+    .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; z-index: 150; }
+    .overlay.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+  <!-- Sidebar Menu -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3>Menu Quản Lý</h3>
+      <button class="close-btn" onclick="toggleMenu()">✕</button>
+    </div>
+    <div class="stats-card">
+      <p>Tổng số khách hàng</p>
+      <h3 id="total-count">0</h3>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <button onclick="scrollToSection('customer-list-section')" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer;">📋 Xem danh sách khách hàng</button>
+      <button onclick="exportCSV()" style="padding: 10px; border: none; border-radius: 6px; background: #16a34a; color: white; cursor: pointer;">📥 Xuất dữ liệu (Excel/CSV)</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <button class="menu-btn" onclick="toggleMenu()">☰</button>
+    <h1>Tác Nghiệp Hiện Trường</h1>
+    <div style="width: 24px;"></div>
+  </header>
+
+  <div class="container">
+    <!-- Tìm kiếm -->
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="🔍 Tìm kiếm tên khách hàng..." oninput="renderCustomers()">
+    </div>
+
+    <!-- Form nhập thông tin tác nghiệp -->
+    <div class="card">
+      <h2>Nhập Thông Tin Khách Hàng</h2>
+      <form id="debt-form">
+        <div class="form-group">
+          <label>Họ và tên khách hàng *</label>
+          <input type="text" id="name" required placeholder="Nhập tên KH...">
+        </div>
+
+        <div class="form-group">
+          <label>Địa chỉ hiện trường</label>
+          <input type="text" id="address" placeholder="Nhập địa chỉ ghé thăm...">
+        </div>
+
+        <div class="form-group">
+          <label>Định vị GPS</label>
+          <div class="gps-container">
+            <input type="text" id="gps" placeholder="Tọa độ (Vĩ độ, Kinh độ)" readonly>
+            <button type="button" class="gps-btn" onclick="getGPS()">📍 Lấy vị trí</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Tình trạng tác nghiệp</label>
+          <select id="status">
+            <option value="Đang theo dõi">Đang theo dõi</option>
+            <option value="Hứa thanh toán">Hứa thanh toán</option>
+            <option value="Không gặp/Vắng nhà">Không gặp / Vắng nhà</option>
+            <option value="Đã thu tiền">Đã thu tiền</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Hình ảnh hiện trường (Chụp/Chọn ảnh)</label>
+          <input type="file" id="image" accept="image/*" capture="environment">
+        </div>
+
+        <div class="form-group">
+          <label>Ghi chú chi tiết</label>
+          <textarea id="notes" rows="3" placeholder="Nội dung trao đổi, đặc điểm nhận diện..."></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">💾 Lưu Thông Tin</button>
+      </form>
+    </div>
+
+    <!-- Danh sách khách hàng đã lưu -->
+    <div class="card" id="customer-list-section">
+      <h2>Danh Sách Đã Lưu</h2>
+      <div id="customer-list">
+        <!-- Dữ liệu JS sẽ render ở đây -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let customers = JSON.parse(localStorage.getItem('field_customers') || '[]');
+
+    // Toggle menu 3 gạch
+    function toggleMenu() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    }
+
+    function scrollToSection(id) {
+      toggleMenu();
+      document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Lấy tọa độ GPS từ trình duyệt/điện thoại
+    function getGPS() {
+      const gpsInput = document.getElementById('gps');
+      if (navigator.geolocation) {
+        gpsInput.placeholder = "Đang lấy vị trí...";
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude.toFixed(6);
+            const lng = position.coords.longitude.toFixed(6);
+            gpsInput.value = `${lat}, ${lng}`;
+          },
+          (error) => {
+            alert("Không thể lấy tọa độ. Vui lòng bật vị trí GPS trên thiết bị.");
+            gpsInput.placeholder = "Lỗi lấy GPS";
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      } else {
+        alert("Trình duyệt không hỗ trợ định vị GPS.");
+      }
+    }
+
+    // Xử lý gửi form
+    document.getElementById('debt-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const fileInput = document.getElementById('image');
+      const file = fileInput.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = function() {
+          saveCustomerData(reader.result);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        saveCustomerData('');
+      }
+    });
+
+    function saveCustomerData(imageData) {
+      const newCustomer = {
+        id: Date.now(),
+        name: document.getElementById('name').value,
+        address: document.getElementById('address').value,
+        gps: document.getElementById('gps').value,
+        status: document.getElementById('status').value,
+        notes: document.getElementById('notes').value,
+        image: imageData,
+        date: new Date().toLocaleString('vi-VN')
+      };
+
+      customers.unshift(newCustomer);
+      localStorage.setItem('field_customers', JSON.stringify(customers));
+      
+      document.getElementById('debt-form').reset();
+      renderCustomers();
+      alert("Đã lưu thông tin tác nghiệp thành công!");
+    }
+
+    // Trích xuất danh sách và bộ lọc tìm kiếm
+    function renderCustomers() {
+      const listContainer = document.getElementById('customer-list');
+      const searchKeyword = document.getElementById('search-input').value.toLowerCase();
+      
+      const filtered = customers.filter(c => c.name.toLowerCase().includes(searchKeyword));
+      
+      document.getElementById('total-count').innerText = customers.length;
+      listContainer.innerHTML = '';
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:10px;">Chưa có dữ liệu phù hợp.</p>';
+        return;
+      }
+
+      filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'customer-item';
+        
+        let badgeClass = 'badge-pending';
+        if (item.status === 'Đã thu tiền') badgeClass = 'badge-paid';
+        if (item.status === 'Không gặp/Vắng nhà') badgeClass = 'badge-unreachable';
+
+        const gpsLink = item.gps ? `<a href="https://maps.google.com/?q=${item.gps}" target="_blank" style="color:#0284c7; text-decoration:none;">📍 ${item.gps}</a>` : 'Chưa lấy vị trí';
+
+        div.innerHTML = `
+          <img src="${item.image || 'https://via.placeholder.com/60?text=No+Img'}" alt="Photo">
+          <div class="customer-info">
+            <h4>${item.name}</h4>
+            <p>🏠 ${item.address || 'Chưa cập nhật'}</p>
+            <p>${gpsLink}</p>
+            <p>📝 ${item.notes || 'Không có ghi chú'}</p>
+            <span class="badge ${badgeClass}">${item.status}</span>
+            <span style="font-size: 10px; color: #94a3b8; display: block; margin-top: 2px;">${item.date}</span>
+          </div>
+        `;
+        listContainer.appendChild(div);
+      });
+    }
+
+    // Xuất file CSV/Excel
+    function exportCSV() {
+      if (customers.length === 0) {
+        alert("Chưa có dữ liệu để xuất!");
+        return;
+      }
+      
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+      csvContent += "Họ tên,Địa chỉ,GPS,Tình trạng,Ghi chú,Ngày cập nhật\n";
+
+      customers.forEach(c => {
+        const row = [
+          `"${c.name}"`,
+          `"${c.address}"`,
+          `"${c.gps}"`,
+          `"${c.status}"`,
+          `"${c.notes}"`,
+          `"${c.date}"`
+        ].join(",");
+        csvContent += row + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Danh_sach_KH_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Khởi tạo hiển thị ban đầu
+    renderCustomers();
+  </script>
+</body>
+</html>

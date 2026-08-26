@@ -1,6 +1,5 @@
 // api/data.js
 export default async function handler(req, res) {
-  // Cấu hình CORS để cho phép ứng dụng web trên điện thoại/máy tính truy cập API
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -9,21 +8,19 @@ export default async function handler(req, res) {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
 
-  // Xử lý preflight request cho CORS
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // Lấy các thông tin cấu hình bảo mật được cài đặt trên Vercel
-  const GITHUB_TOKEN = process.env.GH_TOKEN;
-  const OWNER = process.env.GH_OWNER;
-  const REPO = process.env.GH_REPO;
-  const PATH = "data/customers.json"; // Đường dẫn file lưu trữ dữ liệu trong GitHub
+  const GITHUB_TOKEN = process.env.GH_TOKEN ? process.env.GH_TOKEN.trim() : "";
+  const OWNER = process.env.GH_OWNER ? process.env.GH_OWNER.trim() : "";
+  const REPO = process.env.GH_REPO ? process.env.GH_REPO.trim() : "";
+  const PATH = "data/customers.json";
 
   const ghUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
 
-  // 1. PHƯƠNG THỨC GET: Đọc dữ liệu khách hàng từ GitHub về giao diện
+  // GET: Đọc dữ liệu
   if (req.method === 'GET') {
     try {
       const response = await fetch(ghUrl, {
@@ -33,33 +30,35 @@ export default async function handler(req, res) {
         }
       });
 
-      // Nếu chưa từng tạo file dữ liệu (lần đầu tiên sử dụng)
       if (response.status === 404) {
         return res.status(200).json({ sha: null, data: [] });
       }
 
       const fileData = await response.json();
-      // Giải mã dữ liệu từ định dạng Base64 của GitHub sang UTF-8
-      const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ error: fileData.message || "Lỗi GitHub API" });
+      }
+
+      const base64Content = fileData.content.replace(/\n/g, '');
+      const jsonString = Buffer.from(base64Content, 'base64').toString('utf-8');
       
       return res.status(200).json({
         sha: fileData.sha,
-        data: JSON.parse(content)
+        data: JSON.parse(jsonString)
       });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
   }
 
-  // 2. PHƯƠNG THỨC POST: Thêm khách hàng mới và cập nhật lên GitHub
+  // POST: Lưu dữ liệu mới
   if (req.method === 'POST') {
     try {
       const newCustomer = req.body;
-
       let currentSha = null;
       let currentData = [];
 
-      // Lấy danh sách khách hàng hiện có trên GitHub
       const getRes = await fetch(ghUrl, {
         headers: {
           'Authorization': `token ${GITHUB_TOKEN}`,
@@ -70,17 +69,15 @@ export default async function handler(req, res) {
       if (getRes.status === 200) {
         const fileData = await getRes.json();
         currentSha = fileData.sha;
-        const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
-        currentData = JSON.parse(content);
+        const base64Content = fileData.content.replace(/\n/g, '');
+        const jsonString = Buffer.from(base64Content, 'base64').toString('utf-8');
+        currentData = JSON.parse(jsonString);
       }
 
-      // Thêm thông tin khách hàng mới vào mảng dữ liệu
       currentData.push(newCustomer);
 
-      // Mã hóa mảng dữ liệu mới thành chuỗi Base64 để gửi lên GitHub
       const updatedContent = Buffer.from(JSON.stringify(currentData, null, 2), 'utf-8').toString('base64');
 
-      // Gửi yêu cầu cập nhật hoặc khởi tạo file dữ liệu trên GitHub
       const putRes = await fetch(ghUrl, {
         method: 'PUT',
         headers: {
@@ -95,11 +92,12 @@ export default async function handler(req, res) {
         })
       });
 
+      const putData = await putRes.json();
+
       if (putRes.ok) {
         return res.status(200).json({ success: true, message: "Lưu thành công!" });
       } else {
-        const errObj = await putRes.json();
-        return res.status(400).json({ error: errObj.message });
+        return res.status(putRes.status).json({ error: putData.message });
       }
 
     } catch (err) {

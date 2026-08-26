@@ -75,67 +75,46 @@
 </div>
 
 <script>
-
 const API_URL = "https://app-t-c-nghi-p.onrender.com";
 
 document.getElementById("searchBtn").addEventListener("click", async function () {
 
   const phone = document.getElementById("phone").value.trim();
   const result = document.getElementById("result");
-  const button = document.getElementById("searchBtn");
 
-  if (phone === "") {
+  if (!phone) {
     result.innerHTML = "⚠️ Vui lòng nhập số điện thoại.";
     return;
   }
 
   result.innerHTML = "⏳ Đang tra cứu...";
-  button.disabled = true;
 
   try {
-
-    const url =
-      API_URL + "/api/search?phone=" + encodeURIComponent(phone);
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error("Server lỗi: " + response.status);
-    }
+    const response = await fetch(
+      API_URL + "/api/search?phone=" + encodeURIComponent(phone)
+    );
 
     const data = await response.json();
 
-    if (data.found === true) {
-
+    if (data.found) {
       result.innerHTML = `
-        <strong>✅ Đã tìm thấy</strong>
-        <br><br>
-        Họ tên: ${data.data.name}
-        <br>
-        Số điện thoại: ${data.data.phone}
-        <br>
-        Ghi chú: ${data.data.note}
+        <div>
+          <strong>✅ Đã tìm thấy</strong><br><br>
+          Họ tên: ${data.data.name}<br>
+          Số điện thoại: ${data.data.phone}<br>
+          Ghi chú: ${data.data.note}
+        </div>
       `;
-
     } else {
-
       result.innerHTML = "❌ Không tìm thấy thông tin.";
-
     }
 
   } catch (error) {
-
+    result.innerHTML = "❌ Không kết nối được với máy chủ.";
     console.error(error);
-
-    result.innerHTML =
-      "❌ Không kết nối được với máy chủ.";
-
   }
 
-  button.disabled = false;
-
 });
-
 </script>
 
 </body>

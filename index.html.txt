@@ -1,0 +1,188 @@
+
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tác Nghiệp Hiện Trường</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; padding-bottom: 30px; }
+    .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .btn-gps { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  </style>
+</head>
+<body>
+
+<div class="container mt-4" style="max-width: 650px;">
+  <!-- FORM NHẬP LIỆU -->
+  <div class="card p-4 mb-4">
+    <h4 class="text-primary text-center fw-bold mb-3">NHẬP THÔNG TIN HỆN TRƯỜNG</h4>
+    
+    <form id="customerForm">
+      <div class="mb-3">
+        <label class="form-label fw-bold">Họ và tên khách hàng</label>
+        <input type="text" id="fullname" class="form-control" placeholder="Ví dụ: Nguyễn Văn A" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Địa chỉ</label>
+        <textarea id="address" class="form-control" rows="2" placeholder="Nhập địa chỉ chi tiết" required></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Định vị hiện trường (GPS)</label>
+        <div class="input-group">
+          <input type="text" id="location" class="form-control" placeholder="Ấn nút để lấy tọa độ" readonly required>
+          <button type="button" class="btn btn-outline-primary btn-gps" onclick="getLocation()">Lấy vị trí</button>
+        </div>
+        <small id="locationStatus" class="form-text mt-1 d-block"></small>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Ghi chú</label>
+        <textarea id="note" class="form-control" rows="3" placeholder="Ghi chú về cuộc làm việc/khách hàng..."></textarea>
+      </div>
+
+      <button type="submit" id="submitBtn" class="btn btn-primary w-100 py-2 fw-bold">LƯU DỮ LIỆU</button>
+    </form>
+    <div id="statusAlert" class="mt-3"></div>
+  </div>
+
+  <!-- DANH SÁCH DỮ LIỆU ĐÃ NỔI LÊN -->
+  <div class="card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold mb-0">Lịch sử khách hàng</h5>
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadData()">Tải lại dữ liệu</button>
+    </div>
+    <div id="dataList" class="list-group">
+      <div class="text-center text-muted">Đang tải dữ liệu...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_ENDPOINT = "/api/data";
+
+  // 1. LẤY TỌA ĐỘ GPS
+  function getLocation() {
+    const status = document.getElementById("locationStatus");
+    const locInput = document.getElementById("location");
+
+    if (!navigator.geolocation) {
+      status.className = "text-danger";
+      status.innerText = "Trình duyệt không hỗ trợ định vị GPS.";
+      return;
+    }
+
+    status.className = "text-info";
+    status.innerText = "Đang tìm định vị...";
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        locInput.value = `${lat}, ${lng}`;
+        status.className = "text-success fw-bold";
+        status.innerText = "Đã lấy tọa độ thành công!";
+      },
+      (err) => {
+        status.className = "text-danger";
+        status.innerText = "Chưa thể lấy vị trí: " + err.message + " (Hãy bật vị trí thiết bị)";
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  // 2. LẤY DANH SÁCH KHÁCH HÀNG TỪ SERVER
+  async function loadData() {
+    const dataList = document.getElementById("dataList");
+    try {
+      const res = await fetch(API_ENDPOINT);
+      const result = await res.json();
+
+      if (res.ok) {
+        renderList(result.data || []);
+      } else {
+        dataList.innerHTML = `<div class='text-danger text-center'>Lỗi: ${result.error}</div>`;
+      }
+    } catch (err) {
+      dataList.innerHTML = `<div class='text-danger text-center'>Không thể kết nối API.</div>`;
+    }
+  }
+
+  // 3. HIỂN THỊ RA GIAO DIỆN
+  function renderList(list) {
+    const dataList = document.getElementById("dataList");
+    if (!list.length) {
+      dataList.innerHTML = "<div class='text-muted text-center py-3'>Chưa có dữ liệu nào được lưu.</div>";
+      return;
+    }
+
+    dataList.innerHTML = list.map((item) => `
+      <div class="list-group-item list-group-item-action py-3">
+        <div class="d-flex w-100 justify-content-between">
+          <h6 class="mb-1 text-primary fw-bold">${item.fullname}</h6>
+          <small class="text-muted" style="font-size:0.75rem">${item.timestamp}</small>
+        </div>
+        <p class="mb-1 text-dark"><strong>Địa chỉ:</strong> ${item.address}</p>
+        <p class="mb-1"><strong>Vị trí:</strong> 
+          <a href="https://maps.google.com/?q=${item.location}" target="_blank" class="badge bg-secondary text-decoration-none">
+            📍 ${item.location} (Mở bản đồ)
+          </a>
+        </p>
+        <small class="text-muted"><strong>Ghi chú:</strong> ${item.note || 'Không có'}</small>
+      </div>
+    `).reverse().join("");
+  }
+
+  // 4. LƯU DỮ LIỆU KHI BẤM SUBMIT
+  document.getElementById("customerForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById("submitBtn");
+    const alertBox = document.getElementById("statusAlert");
+    
+    btn.disabled = true;
+    btn.innerText = "Đang lưu lên đám mây...";
+    alertBox.innerHTML = "";
+
+    const newCustomer = {
+      fullname: document.getElementById("fullname").value,
+      address: document.getElementById("address").value,
+      location: document.getElementById("location").value,
+      note: document.getElementById("note").value,
+      timestamp: new Date().toLocaleString("vi-VN")
+    };
+
+    try {
+      const res = await fetch(API_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCustomer)
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        alertBox.innerHTML = `<div class="alert alert-success">Đã lưu dữ liệu thành công!</div>`;
+        document.getElementById("customerForm").reset();
+        document.getElementById("locationStatus").innerText = "";
+        await loadData();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger">Lỗi lưu dữ liệu: ${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "LƯU DỮ LIỆU";
+    }
+  });
+
+  // Tải dữ liệu ban đầu
+  loadData();
+</script>
+
+</body>
+</html>

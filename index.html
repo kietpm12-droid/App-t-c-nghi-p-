@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -7,174 +6,137 @@
   <title>Tra cứu khách hàng</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: Arial, sans-serif;
-    }
-
     body {
       margin: 0;
-      background: #f4f6f8;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
     }
 
-    .container {
-      width: 100%;
+    .box {
       max-width: 500px;
+      margin: 50px auto;
       background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 5px 25px rgba(0,0,0,0.1);
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 3px 15px rgba(0,0,0,.12);
     }
 
     h1 {
       text-align: center;
-      margin-top: 0;
-      color: #222;
-    }
-
-    .description {
-      text-align: center;
-      color: #666;
-      margin-bottom: 25px;
     }
 
     input {
       width: 100%;
       padding: 14px;
-      border: 1px solid #ddd;
+      box-sizing: border-box;
+      margin: 15px 0;
+      border: 1px solid #ccc;
       border-radius: 8px;
       font-size: 16px;
-      margin-bottom: 12px;
     }
 
     button {
       width: 100%;
       padding: 14px;
-      border: none;
-      border-radius: 8px;
       background: #1677ff;
       color: white;
+      border: 0;
+      border-radius: 8px;
       font-size: 16px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #095dcc;
     }
 
     #result {
       margin-top: 20px;
-    }
-
-    .card {
-      background: #f7f9fc;
-      border-radius: 10px;
-      padding: 18px;
-      line-height: 1.8;
-    }
-
-    .error {
-      color: #d93025;
-      text-align: center;
-    }
-
-    .loading {
-      text-align: center;
-      color: #666;
+      padding: 15px;
+      border-radius: 8px;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="container">
+<div class="box">
 
-    <h1>🔎 Tra cứu khách hàng</h1>
+  <h1>🔎 Tra cứu khách hàng</h1>
 
-    <div class="description">
-      Nhập số điện thoại để tra cứu dữ liệu
-    </div>
+  <input
+    id="phone"
+    type="tel"
+    placeholder="Nhập số điện thoại"
+  >
 
-    <input
-      type="tel"
-      id="phone"
-      placeholder="Nhập số điện thoại..."
-    >
+  <button id="searchBtn">
+    TRA CỨU
+  </button>
 
-    <button onclick="searchCustomer()">
-      Tra cứu
-    </button>
+  <div id="result"></div>
 
-    <div id="result"></div>
+</div>
 
-  </div>
+<script>
 
-  <script>
+const API_URL = "https://app-t-c-nghi-p.onrender.com";
 
-    // SAU KHI DEPLOY BACKEND, THAY URL NÀY
-    const API_URL = "https://app-t-c-nghi-p.onrender.com/;
+document.getElementById("searchBtn").addEventListener("click", async function () {
 
-    async function searchCustomer() {
+  const phone = document.getElementById("phone").value.trim();
+  const result = document.getElementById("result");
+  const button = document.getElementById("searchBtn");
 
-      const phone = document.getElementById("phone").value.trim();
-      const result = document.getElementById("result");
+  if (phone === "") {
+    result.innerHTML = "⚠️ Vui lòng nhập số điện thoại.";
+    return;
+  }
 
-      if (!phone) {
-        result.innerHTML =
-          '<div class="error">Vui lòng nhập số điện thoại.</div>';
-        return;
-      }
+  result.innerHTML = "⏳ Đang tra cứu...";
+  button.disabled = true;
 
-      result.innerHTML =
-        '<div class="loading">Đang tra cứu...</div>';
+  try {
 
-      try {
+    const url =
+      API_URL + "/api/search?phone=" + encodeURIComponent(phone);
 
-        const response = await fetch(
-          `${API_URL}/api/search?phone=${encodeURIComponent(phone)}`
-        );
+    const response = await fetch(url);
 
-        const data = await response.json();
-
-        if (!data.success) {
-          result.innerHTML =
-            `<div class="error">${data.message}</div>`;
-          return;
-        }
-
-        if (!data.found) {
-          result.innerHTML =
-            `<div class="error">${data.message}</div>`;
-          return;
-        }
-
-        result.innerHTML = `
-          <div class="card">
-            <strong>Họ tên:</strong> ${data.data.name}<br>
-            <strong>Số điện thoại:</strong> ${data.data.phone}<br>
-            <strong>Ghi chú:</strong> ${data.data.note}
-          </div>
-        `;
-
-      } catch (error) {
-
-        console.error(error);
-
-        result.innerHTML = `
-          <div class="error">
-            Không kết nối được với máy chủ.
-          </div>
-        `;
-
-      }
+    if (!response.ok) {
+      throw new Error("Server lỗi: " + response.status);
     }
 
-  </script>
+    const data = await response.json();
+
+    if (data.found === true) {
+
+      result.innerHTML = `
+        <strong>✅ Đã tìm thấy</strong>
+        <br><br>
+        Họ tên: ${data.data.name}
+        <br>
+        Số điện thoại: ${data.data.phone}
+        <br>
+        Ghi chú: ${data.data.note}
+      `;
+
+    } else {
+
+      result.innerHTML = "❌ Không tìm thấy thông tin.";
+
+    }
+
+  } catch (error) {
+
+    console.error(error);
+
+    result.innerHTML =
+      "❌ Không kết nối được với máy chủ.";
+
+  }
+
+  button.disabled = false;
+
+});
+
+</script>
 
 </body>
 </html>
-

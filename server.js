@@ -7,53 +7,71 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+let customers = [];
+
 // Kiểm tra server
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Backend đang hoạt động!"
+    message: "Hệ thống quản lý khách hàng đang hoạt động"
   });
 });
 
-// API tra cứu
-app.get("/api/search", (req, res) => {
-  const phone = String(req.query.phone || "").trim();
+// Lấy danh sách khách hàng
+app.get("/api/customers", (req, res) => {
+  res.json({
+    success: true,
+    data: customers
+  });
+});
 
-  if (!phone) {
+// Thêm khách hàng
+app.post("/api/customers", (req, res) => {
+  const {
+    name,
+    address,
+    phone,
+    note,
+    latitude,
+    longitude
+  } = req.body;
+
+  if (!name || !phone) {
     return res.status(400).json({
       success: false,
-      message: "Vui lòng nhập số điện thoại"
+      message: "Họ tên và số điện thoại là bắt buộc"
     });
   }
 
-  // Dữ liệu mẫu để kiểm tra hệ thống
-  const customers = {
-    "0900000000": {
-      name: "Khách hàng mẫu",
-      phone: "0900000000",
-      note: "Dữ liệu kiểm tra hệ thống"
-    },
-    "0911111111": {
-      name: "Nguyễn Văn A",
-      phone: "0911111111",
-      note: "Dữ liệu mẫu"
-    }
+  const customer = {
+    id: Date.now(),
+    name,
+    address: address || "",
+    phone,
+    note: note || "",
+    latitude: latitude || null,
+    longitude: longitude || null,
+    createdAt: new Date().toISOString()
   };
 
-  const customer = customers[phone];
-
-  if (!customer) {
-    return res.json({
-      success: true,
-      found: false,
-      message: "Không tìm thấy thông tin"
-    });
-  }
+  customers.push(customer);
 
   res.json({
     success: true,
-    found: true,
+    message: "Đã thêm khách hàng",
     data: customer
+  });
+});
+
+// Xóa khách hàng
+app.delete("/api/customers/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  customers = customers.filter(customer => customer.id !== id);
+
+  res.json({
+    success: true,
+    message: "Đã xóa khách hàng"
   });
 });
 

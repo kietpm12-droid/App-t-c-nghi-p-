@@ -13,9 +13,10 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Điền trực tiếp thông tin repo của bạn tại đây
   const GITHUB_TOKEN = process.env.GH_TOKEN ? process.env.GH_TOKEN.trim() : "";
-  const OWNER = process.env.GH_OWNER ? process.env.GH_OWNER.trim() : "";
-  const REPO = process.env.GH_REPO ? process.env.GH_REPO.trim() : "";
+  const OWNER = "kietpm12-droid";
+  const REPO = "fieldcollection";
   const PATH = "data/customers.json";
 
   const ghUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
@@ -52,7 +53,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST: Lưu dữ liệu mới
+  // POST: Thêm mới dữ liệu
   if (req.method === 'POST') {
     try {
       const newCustomer = req.body;

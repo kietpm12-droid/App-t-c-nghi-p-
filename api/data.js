@@ -15,8 +15,8 @@ export default async function handler(req, res) {
 
   // Điền trực tiếp thông tin repo của bạn tại đây
   const GITHUB_TOKEN = process.env.GH_TOKEN ? process.env.GH_TOKEN.trim() : "";
-  const OWNER = "kietpm12-droid";
-  const REPO = "fieldcollection";
+  const OWNER = "kietpm12-droid"; 
+  const REPO = "App-t-c-nghi-p";
   const PATH = "data/customers.json";
 
   const ghUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
